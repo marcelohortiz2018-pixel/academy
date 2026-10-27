@@ -7,6 +7,15 @@ let me = null, aulas = [], prog = {}, KB = null, curAula = null;
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3200); };
 const fmt = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const isAdmin = () => me && me.papel === 'admin';
+const traduzErroAuth = m => {
+  if (/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
+  if (/already registered|already exists/i.test(m)) return 'Este e-mail já está cadastrado. Tente entrar ou recuperar a senha.';
+  if (/rate limit/i.test(m)) return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
+  if (/password.*(short|least|characters)/i.test(m)) return 'A senha deve ter pelo menos 6 caracteres.';
+  if (/valid email|invalid.*email/i.test(m)) return 'Digite um e-mail válido.';
+  if (/network|fetch/i.test(m)) return 'Sem conexão. Verifique sua internet e tente novamente.';
+  return 'Não foi possível concluir. Tente novamente em instantes.';
+};
 const signed = async p => { if (!p) return null; const { data } = await sb.storage.from(C.BUCKET).createSignedUrl(p, 3600); return data ? data.signedUrl : null; };
 
 async function boot() {
@@ -55,7 +64,7 @@ function viewLogin() {
       const email = $('#em').value.trim(), password = $('#pw').value; $('#msg').textContent = ''; $('#go').disabled = true;
       let r = modo === 'entrar' ? await sb.auth.signInWithPassword({ email, password }) : await sb.auth.signUp({ email, password, options: { data: { nome: ($('#nome').value || '').trim() } } });
       $('#go').disabled = false;
-      if (r.error) return $('#msg').textContent = r.error.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : r.error.message;
+      if (r.error) return $('#msg').textContent = traduzErroAuth(r.error.message);
       if (!r.data.session) { $('#msg').className = 'ok'; return $('#msg').textContent = 'Conta criada. Confirme o e-mail enviado para entrar.'; }
       await load(); location.hash = '#/trilha'; route();
     };
